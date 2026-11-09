@@ -1,330 +1,289 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="theme-color" content="#f2f4f7">
-    <title>LoRa</title>
-    <style>
-        * { box-sizing: border-box; }
-        body {
-            margin: 0;
-            font-family: Arial, Helvetica, sans-serif;
-            background: #f2f4f7;
-            color: #222;
-            text-align: center;
-        }
-        .container {
-            max-width: 700px;
-            margin: auto;
-            padding: 20px;
-        }
-        h1 {
-            margin: 5px 0 4px 0;
-            font-size: 30px;
-        }
-        .subtitulo {
-            color: #666;
-            margin-bottom: 22px;
-        }
-        .status {
-            display: inline-block;
-            padding: 6px 14px;
-            border-radius: 20px;
-            background: #ddd;
-            color: #555;
-            font-size: 14px;
-            margin-bottom: 22px;
-        }
-        .status.ok { background: #d9f7df; color: #18752b; }
-        .status.erro { background: #ffdede; color: #a40000; }
-        .status.aguardando { background: #fff1c7; color: #8a6500; }
-        .dados {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 18px;
-        }
-        .card {
-            background: white;
-            border-radius: 18px;
-            padding: 23px 12px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.10);
-            min-width: 0;
-        }
-        .icone { font-size: 38px; margin-bottom: 8px; }
-        .titulo { font-size: 17px; color: #666; margin-bottom: 10px; }
-        .valor {
-            font-size: 42px;
-            font-weight: bold;
-            overflow-wrap: anywhere;
-        }
-        .unidade { font-size: 20px; color: #666; }
-        .ultima {
-            margin-top: 23px;
-            color: #666;
-            font-size: 14px;
-        }
-        .tempo { margin-top: 8px; font-size: 13px; color: #888; }
-        .payload {
-            margin-top: 18px;
-            padding: 13px;
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 3px 12px rgba(0,0,0,0.07);
-            color: #555;
-            overflow-wrap: anywhere;
-        }
-        .payload strong { color: #333; }
-        .erroMsg {
-            margin-top: 15px;
-            color: #a40000;
-            display: none;
-            font-size: 14px;
-        }
-        .rodape { margin-top: 18px; color: #999; font-size: 12px; }
-        @media (max-width: 500px) {
-            .container { padding: 12px; }
-            h1 { font-size: 26px; }
-            .dados { grid-template-columns: 1fr; gap: 13px; }
-            .valor { font-size: 40px; }
-            .card { padding: 20px 12px; }
-        }
-    </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Monitor LoRa</title>
+<style>
+  :root {
+    --bg: #000000; --surface: #0d1214; --ink: #e8f1f1; --muted: #8a9a9d;
+    --line: #1f2c30; --accent: #4fd1c5; --accent2: #f0a35e; --good: #6fd18a; --bad: #f2877f;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  main { max-width: 860px; margin: 0 auto; padding: 24px 16px 48px; }
+  header { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; justify-content: space-between; margin-bottom: 20px; }
+  h1 { font-size: 1.4rem; margin: 0; font-weight: 650; }
+  .status { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: .9rem; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--muted); }
+  .dot.ok { background: var(--good); }
+  .dot.err { background: var(--bad); }
+
+  .hero { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 20px; }
+  .hero small { color: var(--muted); }
+  .payload {
+    font: 600 clamp(1.6rem, 6vw, 2.8rem)/1.2 ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    margin: 6px 0 4px; word-break: break-all; color: var(--accent);
+  }
+  .age { font-size: .9rem; color: var(--muted); }
+
+  .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin: 12px 0; }
+  .metric { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px; }
+  .metric .val { font-size: 1.9rem; font-weight: 650; font-variant-numeric: tabular-nums; }
+  .metric .unit { font-size: .95rem; color: var(--muted); font-weight: 400; }
+  .metric .label { color: var(--muted); font-size: .9rem; }
+  .bars { display: flex; align-items: flex-end; gap: 3px; height: 22px; margin-top: 8px; }
+  .bars i { width: 8px; background: var(--line); border-radius: 2px; }
+  .bars i.on { background: var(--accent); }
+
+  section.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px; margin-top: 12px; }
+  h2 { font-size: 1rem; margin: 0 0 10px; font-weight: 650; }
+  .chart { margin-bottom: 14px; }
+  .chart:last-child { margin-bottom: 0; }
+  .chart .cap { display: flex; justify-content: space-between; font-size: .85rem; color: var(--muted); }
+  .chart .cap b { color: var(--ink); font-weight: 600; }
+  svg.spark { width: 100%; height: 110px; display: block; }
+
+  .controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; }
+  label { display: grid; gap: 4px; font-size: .85rem; color: var(--muted); }
+  input, button {
+    font: inherit; color: var(--ink); background: var(--bg);
+    border: 1px solid var(--line); border-radius: 6px; padding: 7px 10px;
+  }
+  input { width: 140px; }
+  button { cursor: pointer; background: var(--accent); color: #000; border-color: var(--accent); font-weight: 600; }
+  button.ghost { background: transparent; color: var(--ink); border-color: var(--line); }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .msg { margin-top: 10px; color: var(--bad); font-size: .9rem; min-height: 1.2em; }
+</style>
 </head>
 <body>
-<div class="container">
-    <h1>Monitoramento LoRa</h1>
-    <div class="subtitulo">Gateway LoRa — atualização em tempo real</div>
+<main>
+  <header>
+    <h1>Monitor LoRa</h1>
+    <div class="status"><span class="dot" id="dot"></span><span id="statusTxt">Aguardando dados…</span></div>
+  </header>
 
-    <div id="status" class="status aguardando">● Conectando...</div>
+  <div class="hero">
+    <small>Último pacote recebido</small>
+    <div class="payload" id="payload">—</div>
+    <div class="age" id="age">Nenhum dado ainda</div>
+  </div>
 
-    <div class="dados">
-        <div class="card">
-            <div class="icone">📶</div>
-            <div class="titulo">RSSI</div>
-            <div>
-                <span id="rssi" class="valor">--</span>
-                <span class="unidade">dBm</span>
-            </div>
-        </div>
-
-        <div class="card">
-            <div class="icone">〰️</div>
-            <div class="titulo">SNR</div>
-            <div>
-                <span id="snr" class="valor">--</span>
-                <span class="unidade">dB</span>
-            </div>
-        </div>
-
-        <div class="card">
-            <div class="icone">🌡️</div>
-            <div class="titulo">Temperatura</div>
-            <div>
-                <span id="temperatura" class="valor">--</span>
-                <span class="unidade">°C</span>
-            </div>
-        </div>
-
-        <div class="card">
-            <div class="icone">💧</div>
-            <div class="titulo">Umidade</div>
-            <div>
-                <span id="umidade" class="valor">--</span>
-                <span class="unidade">%</span>
-            </div>
-        </div>
-
-        <div class="card">
-            <div class="icone">📦</div>
-            <div class="titulo">Pacote recebido</div>
-            <div>
-                <span id="pacote" class="valor">--</span>
-            </div>
-        </div>
-
-        <div class="card">
-            <div class="icone">📊</div>
-            <div class="titulo">Pacotes diferentes</div>
-            <div>
-                <span id="totalPacotes" class="valor">0</span>
-            </div>
-        </div>
+  <div class="metrics">
+    <div class="metric">
+      <div class="label">RSSI</div>
+      <div class="val"><span id="rssi">—</span> <span class="unit">dBm</span></div>
+      <div class="bars" id="bars"></div>
     </div>
-
-    <div class="payload">
-        Payload recebido:
-        <strong id="payload">Aguardando dados...</strong>
+    <div class="metric">
+      <div class="label">SNR</div>
+      <div class="val"><span id="snr">—</span> <span class="unit">dB</span></div>
+      <div class="label" id="snrNote">&nbsp;</div>
     </div>
-
-    <div class="ultima">
-        Última leitura:
-        <strong id="dataHora">--</strong>
+    <div class="metric">
+      <div class="label">Pacotes nesta sessão</div>
+      <div class="val" id="count">0</div>
+      <div class="label" id="lastTime">&nbsp;</div>
     </div>
+  </div>
 
-    <div class="tempo">
-        Tempo desde a última leitura:
-        <strong id="tempoSemLeitura">--</strong>
+  <section class="panel">
+    <h2>Histórico dos últimos valores</h2>
+    <div class="chart">
+      <div class="cap"><span>RSSI (dBm)</span><span id="rssiRange"></span></div>
+      <svg class="spark" id="sparkRssi" viewBox="0 0 600 110" preserveAspectRatio="none" role="img" aria-label="Gráfico do RSSI"></svg>
     </div>
-
-    <div class="tempo">
-        Última consulta ao dweet:
-        <strong id="ultimaConsulta">--</strong>
+    <div class="chart">
+      <div class="cap"><span>SNR (dB)</span><span id="snrRange"></span></div>
+      <svg class="spark" id="sparkSnr" viewBox="0 0 600 110" preserveAspectRatio="none" role="img" aria-label="Gráfico do SNR"></svg>
     </div>
+  </section>
 
-    <div id="erroMsg" class="erroMsg">
-        Não foi possível obter os dados do gateway LoRa.
+  <section class="panel">
+    <h2>Configuração</h2>
+    <div class="controls">
+      <label>Nome do thing
+        <input id="thing" value="lora" autocomplete="off">
+      </label>
+      <label>Atualizar a cada (s)
+        <input id="interval" type="number" min="2" value="5">
+      </label>
+      <button id="apply">Aplicar</button>
+      <button id="pause" class="ghost">Pausar</button>
     </div>
-
-    <div class="rodape">Thing dweet.cc: lora</div>
-</div>
+    <div class="msg" id="msg"></div>
+  </section>
+</main>
 
 <script>
-const URL_DWEET = "https://dweet.cc/get/latest/dweet/for/lora";
-const INTERVALO_CONSULTA = 3000;
-const TEMPO_OFFLINE = 15000;
+  const BASE = "https://dweet.cc";
+  const MAX = 60;        // pontos guardados
+  const SHOW = 40;       // pontos desenhados
+  let thing = "lora", every = 5000, timer = null, paused = false;
+  let items = [], seen = new Set();   // items: mais recente primeiro
 
-let ultimaLeitura = null;
-let ultimoCreated = null;
-let recebeuPrimeiraLeitura = false;
-let totalPacotes = 0;
-let consultaEmAndamento = false;
+  const $ = id => document.getElementById(id);
 
-function formatarData(dataString) {
-    try {
-        return new Date(dataString).toLocaleString("pt-BR", {
-            timeZone: "America/Sao_Paulo",
-            day: "2-digit",
-            month: "2-digit",
-            year: "numeric",
-            hour: "2-digit",
-            minute: "2-digit",
-            second: "2-digit"
-        });
-    } catch (erro) {
-        return dataString;
-    }
-}
-
-function extrairMedidas(payload) {
-    const texto = String(payload ?? "");
-    const temperatura = texto.match(/(?:^|[|;, ])T\s*:\s*(-?\d+(?:[.,]\d+)?)/i);
-    const umidade = texto.match(/(?:^|[|;, ])U\s*:\s*(-?\d+(?:[.,]\d+)?)/i);
-
+  function parseDweet(d) {
+    const c = d.content || {};
     return {
-        temperatura: temperatura ? temperatura[1].replace(",", ".") : null,
-        umidade: umidade ? umidade[1].replace(",", ".") : null
+      created: d.created,
+      payload: c.payload != null ? String(c.payload) : JSON.stringify(c),
+      rssi: c.rssi != null ? Number(c.rssi) : null,
+      snr: c.snr != null ? Number(c.snr) : null
     };
-}
+  }
 
-async function atualizarDados() {
-    if (consultaEmAndamento) return;
-    consultaEmAndamento = true;
+  async function getJson(path) {
+    const r = await fetch(BASE + path, { cache: "no-store" });
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    return r.json();
+  }
 
-    const status = document.getElementById("status");
-    const erroMsg = document.getElementById("erroMsg");
-
-    document.getElementById("ultimaConsulta").textContent =
-        new Date().toLocaleTimeString("pt-BR");
-
+  async function fetchData() {
+    let json;
     try {
-        const resposta = await fetch(URL_DWEET, {
-            cache: "no-store"
-        });
-
-        if (!resposta.ok) {
-            throw new Error("HTTP " + resposta.status);
-        }
-
-        const dados = await resposta.json();
-
-        if (!dados.with || !dados.with.length || !dados.with[0].content) {
-            throw new Error("Dados inválidos recebidos do Dweet");
-        }
-
-        const dweet = dados.with[0];
-        const conteudo = dweet.content || {};
-        const createdAtual = dweet.created;
-
-        // A página só contabiliza uma nova leitura quando o Dweet muda.
-        if (createdAtual && createdAtual !== ultimoCreated) {
-            ultimoCreated = createdAtual;
-            ultimaLeitura = Date.now();
-            recebeuPrimeiraLeitura = true;
-            totalPacotes++;
-
-            const medidas = extrairMedidas(conteudo.payload);
-
-            document.getElementById("rssi").textContent =
-                conteudo.rssi !== undefined ? Number(conteudo.rssi).toFixed(0) : "--";
-
-            document.getElementById("snr").textContent =
-                conteudo.snr !== undefined ? Number(conteudo.snr).toFixed(1) : "--";
-
-            document.getElementById("pacote").textContent =
-                conteudo.pacote !== undefined ? conteudo.pacote : "--";
-
-            document.getElementById("temperatura").textContent =
-                medidas.temperatura !== null ? Number(medidas.temperatura).toFixed(2) : "--";
-
-            document.getElementById("umidade").textContent =
-                medidas.umidade !== null ? Number(medidas.umidade).toFixed(2) : "--";
-
-            document.getElementById("payload").textContent =
-                conteudo.payload !== undefined ? conteudo.payload : "--";
-
-            document.getElementById("dataHora").textContent =
-                formatarData(createdAtual);
-
-            document.getElementById("totalPacotes").textContent = totalPacotes;
-        }
-
-        status.textContent = "● Online";
-        status.className = "status ok";
-        erroMsg.style.display = "none";
-        verificarEstado();
-
-    } catch (erro) {
-        console.error("Erro ao consultar Dweet:", erro);
-        status.textContent = "● Erro de comunicação";
-        status.className = "status erro";
-        erroMsg.style.display = "block";
-        // Uma falha momentânea na consulta não apaga a última leitura.
-        verificarEstado();
-    } finally {
-        consultaEmAndamento = false;
+      json = await getJson("/get/dweets/for/" + encodeURIComponent(thing));
+    } catch (e) {
+      json = await getJson("/get/latest/dweet/for/" + encodeURIComponent(thing));
     }
-}
+    if (json.this === "failed") throw new Error(json.because || "Thing não encontrado");
+    const list = (json.with || []).map(parseDweet);
+    if (!list.length) throw new Error("Nenhum dweet encontrado");
+    return list;
+  }
 
-function verificarEstado() {
-    const status = document.getElementById("status");
-
-    if (!recebeuPrimeiraLeitura) {
-        if (status.textContent !== "● Erro de comunicação") {
-            status.textContent = "● Aguardando";
-            status.className = "status aguardando";
-        }
-        return;
+  async function tick() {
+    if (paused) return;
+    try {
+      const list = await fetchData();
+      for (const it of list) {
+        if (!seen.has(it.created)) { seen.add(it.created); items.push(it); }
+      }
+      items.sort((a, b) => new Date(b.created) - new Date(a.created));
+      items = items.slice(0, MAX);
+      setStatus(true, "Conectado ao dweet.cc");
+      $("msg").textContent = "";
+      render();
+    } catch (e) {
+      setStatus(false, "Sem conexão com o dweet.cc");
+      $("msg").textContent = "Erro: " + e.message + ". Verifique o nome do thing e sua conexão.";
     }
+  }
 
-    const decorrido = Date.now() - ultimaLeitura;
-    const segundos = Math.floor(decorrido / 1000);
+  function setStatus(ok, txt) {
+    $("dot").className = "dot " + (ok ? "ok" : "err");
+    $("statusTxt").textContent = txt;
+  }
 
-    document.getElementById("tempoSemLeitura").textContent = segundos + " s";
+  function fmtTime(iso) {
+    const d = new Date(iso);
+    return isNaN(d) ? "—" : d.toLocaleTimeString("pt-BR");
+  }
 
-    if (decorrido >= TEMPO_OFFLINE) {
-        status.textContent = "● Sem nova leitura";
-        status.className = "status erro";
-    } else {
-        status.textContent = "● Online";
-        status.className = "status ok";
+  function ago(iso) {
+    const s = Math.max(0, Math.round((Date.now() - new Date(iso)) / 1000));
+    if (s < 60) return "há " + s + " s";
+    if (s < 3600) return "há " + Math.floor(s / 60) + " min";
+    return "há " + Math.floor(s / 3600) + " h";
+  }
+
+  function rssiLevel(r) {
+    if (r == null) return 0;
+    if (r >= -70) return 5;
+    if (r >= -85) return 4;
+    if (r >= -100) return 3;
+    if (r >= -110) return 2;
+    return 1;
+  }
+
+  function snrNote(s) {
+    if (s == null) return "\u00a0";
+    if (s >= 5) return "Sinal limpo";
+    if (s >= 0) return "Sinal bom";
+    if (s >= -10) return "Perto do ruído, ainda decodifica";
+    return "Muito abaixo do ruído";
+  }
+
+  function render() {
+    if (!items.length) return;
+    const it = items[0];
+    $("payload").textContent = it.payload;
+    $("age").textContent = "Recebido " + ago(it.created);
+    $("rssi").textContent = it.rssi != null ? it.rssi : "—";
+    $("snr").textContent = it.snr != null ? it.snr.toFixed(1) : "—";
+    $("snrNote").textContent = snrNote(it.snr);
+    $("count").textContent = seen.size;
+    $("lastTime").textContent = "Último às " + fmtTime(it.created);
+
+    const lvl = rssiLevel(it.rssi);
+    $("bars").innerHTML = [1, 2, 3, 4, 5]
+      .map(i => '<i class="' + (i <= lvl ? "on" : "") + '" style="height:' + (4 + i * 3.6) + 'px"></i>').join("");
+
+    drawChart("sparkRssi", "rssiRange", "rssi", "var(--accent)", 0);
+    drawChart("sparkSnr", "snrRange", "snr", "var(--accent2)", 1);
+  }
+
+  function drawChart(svgId, rangeId, key, color, dec) {
+    const pts = items.filter(x => x[key] != null).slice(0, SHOW).reverse();
+    const svg = $(svgId), range = $(rangeId);
+    if (pts.length < 2) {
+      svg.innerHTML = "";
+      range.textContent = pts.length ? "Aguardando mais pacotes…" : "";
+      return;
     }
-}
+    const vals = pts.map(p => p[key]);
+    let lo = Math.min(...vals), hi = Math.max(...vals);
+    if (hi - lo < 4) { const m = (hi + lo) / 2; lo = m - 2; hi = m + 2; }
+    const pad = (hi - lo) * 0.1; lo -= pad; hi += pad;
+    const x = i => (i / (pts.length - 1)) * 580 + 10;
+    const y = v => 100 - ((v - lo) / (hi - lo)) * 90;
+    const line = pts.map((p, i) => (i ? "L" : "M") + x(i).toFixed(1) + " " + y(p[key]).toFixed(1)).join(" ");
+    const area = line + " L" + x(pts.length - 1).toFixed(1) + " 105 L" + x(0).toFixed(1) + " 105 Z";
+    const last = pts[pts.length - 1];
+    svg.innerHTML =
+      '<line x1="10" x2="590" y1="105" y2="105" stroke="var(--line)" stroke-width="1" vector-effect="non-scaling-stroke"/>' +
+      '<path d="' + area + '" fill="' + color + '" opacity="0.12"/>' +
+      '<path d="' + line + '" fill="none" stroke="' + color + '" stroke-width="2" vector-effect="non-scaling-stroke"/>' +
+      '<circle cx="' + x(pts.length - 1).toFixed(1) + '" cy="' + y(last[key]).toFixed(1) + '" r="4" fill="' + color + '"/>';
+    range.innerHTML = "mín <b>" + Math.min(...vals).toFixed(dec) + "</b> · máx <b>" + Math.max(...vals).toFixed(dec) + "</b>";
+  }
 
-// Primeira consulta e atualização periódica.
-atualizarDados();
-setInterval(atualizarDados, INTERVALO_CONSULTA);
-setInterval(verificarEstado, 1000);
+  function restart() {
+    clearInterval(timer);
+    tick();
+    timer = setInterval(tick, every);
+  }
+
+  $("apply").addEventListener("click", () => {
+    const t = $("thing").value.trim();
+    const s = parseInt($("interval").value, 10);
+    if (t && t !== thing) {
+      thing = t; items = []; seen = new Set();
+      $("payload").textContent = "—"; $("count").textContent = "0";
+      $("rssi").textContent = "—"; $("snr").textContent = "—";
+      $("age").textContent = "Nenhum dado ainda";
+      $("sparkRssi").innerHTML = ""; $("sparkSnr").innerHTML = "";
+      $("rssiRange").textContent = ""; $("snrRange").textContent = "";
+    }
+    if (s >= 2) every = s * 1000;
+    restart();
+  });
+
+  $("pause").addEventListener("click", () => {
+    paused = !paused;
+    $("pause").textContent = paused ? "Retomar" : "Pausar";
+    if (!paused) tick();
+  });
+
+  setInterval(() => { if (items.length) $("age").textContent = "Recebido " + ago(items[0].created); }, 1000);
+
+  restart();
 </script>
 </body>
 </html>
